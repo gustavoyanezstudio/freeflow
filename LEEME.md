@@ -139,7 +139,8 @@ instalar nada.)
   **«¿Cómo se usa?»** dentro del programa).
 - `Freeflow.spec` / `secretflow.spec` — recetas de compilación para Windows.
 - `freeflow_macos.spec` / `secretflow_macos.spec` — recetas para macOS.
-- `build_macos.sh` — compila las dos ediciones para Mac y arma los `.dmg`.
+- `build_macos.sh` — compila las dos ediciones para Mac y arma los `.dmg`
+  (versión universal + versión legacy).
 - `.github\workflows\build-macos.yml` — compila los `.dmg` en la nube (GitHub
   Actions) sin necesidad de tener un Mac.
 - `freeflow.ico` / `secretflow.ico` (y `.png`, `_btn.png`) — íconos de cada edición.
@@ -169,21 +170,33 @@ armarse **en un Mac**. Están las dos vías:
     bash build_macos.sh
 
 Necesita macOS con las herramientas de línea de comandos (`sips`, `iconutil`,
-`hdiutil`, que ya vienen con el sistema) y Python 3. El script instala lo que
-falta, incrusta un `ffmpeg` de Mac, genera los `.icns`, compila las dos ediciones
-y deja **`dist/freeflow.dmg`** y **`dist/secretflow.dmg`**.
+`hdiutil`, que ya vienen con el sistema) y Python 3 (idealmente el universal2 de
+python.org). El script baja los `ffmpeg` compatibles, genera los `.icns`, compila
+las dos ediciones y deja en `dist/` **cuatro** `.dmg`:
+
+| Archivo | Para | macOS mínimo |
+|---|---|---|
+| `freeflow.dmg` / `secretflow.dmg` | Universal (Apple Silicon nativo + Intel) | Intel 10.13 · Apple Silicon 12 |
+| `freeflow-legacy.dmg` / `secretflow-legacy.dmg` | Solo Intel (x86_64) | 10.13 (en Apple Silicon, vía Rosetta 2) |
 
 **b) En la nube (GitHub Actions), sin tener Mac.** El workflow
 `.github/workflows/build-macos.yml` compila los mismos `.dmg` en un runner macOS
 de GitHub. Se corre solo (Pestaña **Actions** → **Build macOS DMG** → *Run
 workflow*) y los `.dmg` quedan para descargar en **Artifacts**. Hace falta tener
-el proyecto en un repositorio de GitHub.
+el proyecto en un repositorio de GitHub. Al empujar un tag `v*`, además, publica
+la Release con los cuatro `.dmg`.
 
-Las apps se generan **universal2** (corren en Apple Silicon y en Intel) y **sin
-firmar**: como no hay cuenta Apple de por medio, la primera vez macOS muestra el
-aviso de *«desarrollador no identificado»* → se abre con **clic derecho → Abrir**
-(una sola vez). Si en algún momento se quiere repartir a gente no técnica, se
-puede firmar/notarizar con una cuenta Apple Developer (US$99/año).
+Las apps se generan **sin firmar**: como no hay cuenta Apple de por medio, la
+primera vez macOS muestra el aviso de *«desarrollador no identificado»* → se abre
+con **clic derecho → Abrir** (una sola vez). Si en algún momento se quiere repartir
+a gente no técnica, se puede firmar/notarizar con una cuenta Apple Developer
+(US$99/año).
+
+¿Por qué hay dos versiones? El resto de la app (Python, Tcl/Tk, OpenSSL) soporta
+macOS 10.13 en Intel, pero el `ffmpeg` arm64 más antiguo que existe pide macOS 12.
+Por eso la universal exige 12 en Apple Silicon y la legacy (solo x86_64) baja
+hasta 10.13. El `ffmpeg` x86_64 sale de **evermeet.cx** (mínimo 10.13); el arm64,
+de **imageio-ffmpeg** (mínimo 12).
 
 ## Nota sobre YouTube
 
