@@ -61,7 +61,7 @@ jobs:
         run: |
           set -e
           mk_icns() {
-            d=".ic"; rm -rf "$d"; mkdir -p "$d"
+            d="icon.iconset"; rm -rf "$d"; mkdir -p "$d"
             for n in 16 32 128 256 512; do
               sips -z $n $n "$1" --out "$d/icon_${n}x${n}.png" >/dev/null
               sips -z $((n*2)) $((n*2)) "$1" --out "$d/icon_${n}x${n}@2x.png" >/dev/null

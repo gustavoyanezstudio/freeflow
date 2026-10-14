@@ -48,7 +48,7 @@ echo "ffmpeg: $( bin/ffmpeg -version 2>/dev/null | head -1 || true )"
 
 # --- ícono .icns a partir del .png de cada edición ---
 hacer_icns() {
-  local src="$1" out="$2" d=".iconset_tmp"
+  local src="$1" out="$2" d="icon.iconset"
   rm -rf "$d"; mkdir -p "$d"
   for n in 16 32 128 256 512; do
     sips -z "$n" "$n" "$src" --out "$d/icon_${n}x${n}.png" >/dev/null
