@@ -23,6 +23,11 @@ from PyInstaller.utils.hooks import collect_all
 
 NOMBRE = "freeflow"
 ARQ = os.environ.get("FF_ARCH", "universal2")
+# Etiqueta para la build de compatibilidad (FF_ETIQUETA=legacy): agrega el
+# sufijo al nombre de la .app y a los datos de versión (queda "freeflow legacy").
+ETIQUETA = os.environ.get("FF_ETIQUETA", "").strip()
+SUFIJO = (" " + ETIQUETA) if ETIQUETA else ""
+VERSION = "1.0.1"
 
 datas = [
     (NOMBRE + ".png", "."),   # ícono para el Dock/la ventana (iconphoto)
@@ -68,17 +73,17 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
-coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="freeflow")
+coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name=NOMBRE)
 app = BUNDLE(
     coll,
-    name="freeflow.app",
+    name=NOMBRE + SUFIJO + ".app",
     icon="freeflow.icns",
     bundle_identifier="com.freeflow.desktop",
     info_plist={
-        "CFBundleName": "freeflow",
-        "CFBundleDisplayName": "freeflow",
-        "CFBundleShortVersionString": "1.0.1",
-        "CFBundleVersion": "1.0.1",
+        "CFBundleName": NOMBRE + SUFIJO,
+        "CFBundleDisplayName": NOMBRE + SUFIJO,
+        "CFBundleShortVersionString": VERSION + (("-" + ETIQUETA) if ETIQUETA else ""),
+        "CFBundleVersion": VERSION,
         "NSHighResolutionCapable": True,
         "LSMinimumSystemVersion": "10.13",
     },

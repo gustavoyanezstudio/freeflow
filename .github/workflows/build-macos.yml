@@ -1,13 +1,21 @@
 # ---------------------------------------------------------------------------
-# Compila freeflow y secretflow para macOS (.app universal2) y arma los .dmg,
-# en un runner macOS de GitHub. No hace falta tener un Mac.
+# Compila freeflow y secretflow para macOS y arma los .dmg, en un runner de
+# GitHub. No hace falta tener un Mac.
+#
+# Genera DOS versiones por edición:
+#   freeflow.dmg / secretflow.dmg
+#       Universal (Apple Silicon nativa + Intel). Intel: macOS 10.13+.
+#       Apple Silicon: macOS 12+ (el ffmpeg arm64 no baja de 12).
+#   freeflow-legacy.dmg / secretflow-legacy.dmg
+#       Solo Intel (x86_64), macOS 10.13+. En Apple Silicon corre con
+#       Rosetta 2 (macOS lo pide instalar la primera vez).
 #
 # Cómo usarlo:
 #   1) Subí este proyecto a un repositorio de GitHub.
 #   2) Pestaña "Actions" → "Build macOS DMG" → "Run workflow".
 #   3) Cuando termina, bajá los .dmg desde "Artifacts".
 #
-# (También se dispara solo si empujás un tag tipo v1.0)
+# (También se dispara solo si empujás un tag tipo v1.0.1)
 # ---------------------------------------------------------------------------
 name: Build macOS DMG
 
@@ -27,7 +35,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Python universal2 de python.org (así la app corre en Apple Silicon e Intel)
+      # Python universal2 de python.org (soporta macOS 10.13+ en Intel y
+      # Apple Silicon nativo; el instalador es "for macOS 10.13 and later").
       - name: Instalar Python universal2
         run: |
           curl -fsSLO https://www.python.org/ftp/python/3.12.7/python-3.12.7-macos11.pkg
@@ -38,26 +47,27 @@ jobs:
           "$PY" -VV
           "$PY" -m pip install --upgrade pip pyinstaller yt-dlp imageio-ffmpeg
 
-      # Se descargan los ffmpeg de cada arquitectura y se unen con lipo -> universal
-      - name: ffmpeg universal (arm64 + x86_64)
+      # El ffmpeg de imageio ya no arranca en macOS viejo (pide 11/12). Se arma:
+      #   bin/ffmpeg        -> universal (arm64 de imageio + x86_64 de evermeet)
+      #   bin/ffmpeg-legacy -> x86_64 solo (evermeet, macOS 10.13+)
+      - name: Preparar ffmpeg
         run: |
           set -eux
           mkdir -p bin
-          ARM="$("$PY" -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')"
-          mkdir -p /tmp/ffx/w
-          if "$PY" -m pip download --only-binary=:all: --no-deps \
-               --platform macosx_10_9_x86_64 --python-version 3.12 \
-               --implementation cp --abi none \
-               imageio-ffmpeg -d /tmp/ffx; then
-            (cd /tmp/ffx/w && unzip -o /tmp/ffx/*.whl >/dev/null)
-            X86="$(find /tmp/ffx/w -type f -name 'ffmpeg-macos-x86_64*' | head -1)"
-            lipo -create -output bin/ffmpeg "$ARM" "$X86"
-          else
-            echo "AVISO: no pude bajar el ffmpeg x86_64; la app queda sólo arm64."
-            cp "$ARM" bin/ffmpeg
-          fi
-          chmod +x bin/ffmpeg
-          file bin/ffmpeg
+          ARM="$( "$PY" -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())' )"
+          URL="$( curl -fsSL https://evermeet.cx/ffmpeg/info/ffmpeg/release \
+                  | "$PY" -c 'import sys,json; print(json.load(sys.stdin)["download"]["zip"]["url"])' )"
+          curl -fsSL -o /tmp/evermeet.zip "$URL"
+          rm -rf /tmp/evermeet && mkdir -p /tmp/evermeet
+          unzip -o /tmp/evermeet.zip -d /tmp/evermeet >/dev/null
+          X86="$( find /tmp/evermeet -type f -name ffmpeg | head -1 )"
+          [ -n "$X86" ]
+          chmod +x "$ARM" "$X86"
+          cp "$X86" bin/ffmpeg-legacy
+          lipo -create -output bin/ffmpeg "$ARM" "$X86"
+          chmod +x bin/ffmpeg bin/ffmpeg-legacy
+          echo "universal: $(lipo -archs bin/ffmpeg)"
+          echo "legacy:    $(lipo -archs bin/ffmpeg-legacy)"
 
       - name: Íconos .icns
         run: |
@@ -73,6 +83,7 @@ jobs:
           mk_icns freeflow.png freeflow.icns
           mk_icns secretflow.png secretflow.icns
 
+      # ----------------------- versión universal2 -----------------------
       - name: PyInstaller (universal2)
         env:
           FF_ARCH: universal2
@@ -80,35 +91,10 @@ jobs:
           "$PY" -m PyInstaller --noconfirm --clean freeflow_macos.spec
           "$PY" -m PyInstaller --noconfirm --clean secretflow_macos.spec
 
-      # Muestra la arquitectura y el macOS mínimo real de CADA rodaja de cada binario.
-      - name: Verificar versión mínima de macOS
-        run: |
-          set -e
-          minos_of() { otool -arch "$2" -l "$1" 2>/dev/null | awk '
-              /LC_BUILD_VERSION/{b=1} b&&/minos/{print $2; exit}
-              /LC_VERSION_MIN_MACOSX/{v=1} v&&/^ *version/{print $2; exit}'; }
-          x86="0.0"; arm="0.0"
-          for app in freeflow secretflow; do
-            echo "== $app.app =="
-            while IFS= read -r f; do
-              archs="$(lipo -archs "$f" 2>/dev/null)" || continue
-              [ -n "$archs" ] || continue
-              line="  ${f#dist/} [$(echo $archs | tr ' ' ',')]"
-              for a in $archs; do
-                m="$(minos_of "$f" "$a")"
-                [ -n "$m" ] || continue
-                line="$line ${a}=${m}"
-                if [ "$a" = "x86_64" ]; then x86="$(printf '%s\n%s\n' "$x86" "$m" | sort -V | tail -1)"; fi
-                if [ "$a" = "arm64" ];  then arm="$(printf '%s\n%s\n' "$arm" "$m" | sort -V | tail -1)"; fi
-              done
-              echo "$line"
-            done < <(find "dist/$app.app" -type f)
-            echo "  Info.plist LSMinimumSystemVersion: $(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "dist/$app.app/Contents/Info.plist")"
-          done
-          echo "bin/ffmpeg: archs=$(lipo -archs bin/ffmpeg 2>/dev/null || echo '?')"
-          echo "== PEOR minos  x86_64=macOS $x86   arm64=macOS $arm =="
+      - name: Verificar versiones (universal2)
+        run: bash scripts/verificar_minos.sh "universal2"
 
-      - name: Armar los .dmg
+      - name: Armar los .dmg (universal2)
         run: |
           for app in freeflow secretflow; do
             stage="dist/dmg_$app"; rm -rf "$stage" "dist/$app.dmg"; mkdir -p "$stage"
@@ -117,20 +103,48 @@ jobs:
             hdiutil create -volname "$app" -srcfolder "$stage" -ov -format UDZO "dist/$app.dmg"
             rm -rf "$stage"
           done
+          rm -rf dist/freeflow.app dist/secretflow.app
+
+      # -------------------- versión legacy (solo Intel) --------------------
+      - name: PyInstaller (legacy, solo Intel x86_64)
+        env:
+          FF_ARCH: x86_64
+          FF_ETIQUETA: legacy
+        run: |
+          cp bin/ffmpeg-legacy bin/ffmpeg
+          "$PY" -m PyInstaller --noconfirm --clean freeflow_macos.spec
+          "$PY" -m PyInstaller --noconfirm --clean secretflow_macos.spec
+
+      - name: Verificar versiones (legacy)
+        run: bash scripts/verificar_minos.sh "legacy"
+
+      - name: Armar los .dmg (legacy)
+        run: |
+          for app in freeflow secretflow; do
+            stage="dist/dmg_$app"; rm -rf "$stage" "dist/$app-legacy.dmg"; mkdir -p "$stage"
+            cp -R "dist/$app legacy.app" "$stage/"
+            cp "README_$app.txt" "$stage/"
+            hdiutil create -volname "$app legacy" -srcfolder "$stage" -ov -format UDZO "dist/$app-legacy.dmg"
+            rm -rf "$stage"
+          done
           ls -lh dist/*.dmg
 
-      - name: Subir freeflow.dmg
+      - name: Subir DMGs de freeflow
         uses: actions/upload-artifact@v4
         with:
           name: freeflow-macos-dmg
-          path: dist/freeflow.dmg
+          path: |
+            dist/freeflow.dmg
+            dist/freeflow-legacy.dmg
           if-no-files-found: error
 
-      - name: Subir secretflow.dmg
+      - name: Subir DMGs de secretflow
         uses: actions/upload-artifact@v4
         with:
           name: secretflow-macos-dmg
-          path: dist/secretflow.dmg
+          path: |
+            dist/secretflow.dmg
+            dist/secretflow-legacy.dmg
           if-no-files-found: error
 
       - name: Publicar Release (solo al empujar un tag v*)
@@ -140,3 +154,5 @@ jobs:
           files: |
             dist/freeflow.dmg
             dist/secretflow.dmg
+            dist/freeflow-legacy.dmg
+            dist/secretflow-legacy.dmg

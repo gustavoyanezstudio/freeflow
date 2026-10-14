@@ -23,6 +23,11 @@ from PyInstaller.utils.hooks import collect_all
 
 NOMBRE = "secretflow"
 ARQ = os.environ.get("FF_ARCH", "universal2")
+# Etiqueta para la build de compatibilidad (FF_ETIQUETA=legacy): agrega el
+# sufijo al nombre de la .app y a los datos de versión (queda "secretflow legacy").
+ETIQUETA = os.environ.get("FF_ETIQUETA", "").strip()
+SUFIJO = (" " + ETIQUETA) if ETIQUETA else ""
+VERSION = "1.0.1"
 
 datas = [
     (NOMBRE + ".png", "."),   # ícono para el Dock/la ventana (iconphoto)
@@ -71,14 +76,14 @@ exe = EXE(
 coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name=NOMBRE)
 app = BUNDLE(
     coll,
-    name="secretflow.app",
+    name=NOMBRE + SUFIJO + ".app",
     icon="secretflow.icns",
     bundle_identifier="com.secretflow.desktop",
     info_plist={
-        "CFBundleName": "secretflow",
-        "CFBundleDisplayName": "secretflow",
-        "CFBundleShortVersionString": "1.0.1",
-        "CFBundleVersion": "1.0.1",
+        "CFBundleName": NOMBRE + SUFIJO,
+        "CFBundleDisplayName": NOMBRE + SUFIJO,
+        "CFBundleShortVersionString": VERSION + (("-" + ETIQUETA) if ETIQUETA else ""),
+        "CFBundleVersion": VERSION,
         "NSHighResolutionCapable": True,
         "LSMinimumSystemVersion": "10.13",
     },
