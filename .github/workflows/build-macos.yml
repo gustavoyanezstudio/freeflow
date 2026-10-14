@@ -20,6 +20,8 @@ on:
 jobs:
   build:
     runs-on: macos-14            # runner Apple Silicon
+    permissions:
+      contents: write            # para publicar la Release al empujar un tag
     env:
       PY: /Library/Frameworks/Python.framework/Versions/3.12/bin/python3
     steps:
@@ -102,3 +104,11 @@ jobs:
           name: secretflow-macos-dmg
           path: dist/secretflow.dmg
           if-no-files-found: error
+
+      - name: Publicar Release (solo al empujar un tag v*)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/freeflow.dmg
+            dist/secretflow.dmg
