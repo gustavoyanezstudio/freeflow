@@ -80,7 +80,7 @@ if EDICION not in MARCAS:
 MARCA = MARCAS[EDICION]
 
 APP = MARCA["app"]
-VERSION = "1.0"
+VERSION = "1.0.1"
 
 TERMINOS_DEF = MARCA["terminos"]
 

@@ -12,6 +12,10 @@ GitHub Actions).
 La arquitectura se elige con la variable de entorno FF_ARCH:
   universal2 (por defecto) · arm64 · x86_64
 Para universal2, el Python y el binario bin/ffmpeg tienen que ser universal2.
+
+Compatibilidad: el .app apunta a macOS 10.13 (High Sierra) como mínimo.
+En Macs Intel (aunque sean viejos, p. ej. Catalina 10.15) usa la rodaja
+x86_64; en Apple Silicon usa la rodaja arm64 nativa.
 """
 
 import os
@@ -73,9 +77,9 @@ app = BUNDLE(
     info_plist={
         "CFBundleName": "freeflow",
         "CFBundleDisplayName": "freeflow",
-        "CFBundleShortVersionString": "1.0",
-        "CFBundleVersion": "1.0",
+        "CFBundleShortVersionString": "1.0.1",
+        "CFBundleVersion": "1.0.1",
         "NSHighResolutionCapable": True,
-        "LSMinimumSystemVersion": "11.0",
+        "LSMinimumSystemVersion": "10.13",
     },
 )
