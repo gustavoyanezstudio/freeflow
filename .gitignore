@@ -1,0 +1,12 @@
+# Entorno y compilación (no van al repositorio)
+.venv/
+build/
+dist/
+__pycache__/
+*.pyc
+
+# Binarios de ffmpeg (se generan/copian al compilar; son grandes)
+bin/
+
+# Íconos generados en macOS
+*.icns
