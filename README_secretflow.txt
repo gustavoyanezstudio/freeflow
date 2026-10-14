@@ -126,6 +126,15 @@ REQUISITOS
   - Conexión a internet.
   - Nada más: el programa ya trae todo lo que necesita adentro.
 
+  ¿En un Mac? Elige el archivo según el equipo:
+
+    - El .dmg que NO dice "legacy": Apple Silicon (M1 o más nuevo) o Intel
+      moderno. En Apple Silicon pide macOS 12 o más.
+    - El -legacy.dmg: Mac Intel más antiguos (desde macOS 10.13, High
+      Sierra / Catalina). En Apple Silicon también corre, con Rosetta 2.
+
+  Si no sabes cuál te toca, usa el -legacy: corre en todos los Mac desde 10.13.
+
 
 PREGUNTAS FRECUENTES
 --------------------
@@ -270,6 +279,15 @@ REQUIREMENTS
   - Windows 64-bit or Mac (Apple Silicon and Intel).
   - An internet connection.
   - Nothing else: the program already brings everything it needs inside.
+
+  On a Mac? Download the file that matches your machine:
+
+    - The .dmg that does NOT say "legacy": Apple Silicon (M1 or newer) or
+      modern Intel. On Apple Silicon it needs macOS 12 or later.
+    - The -legacy.dmg: older Intel Macs (from macOS 10.13, High Sierra /
+      Catalina). On Apple Silicon it also runs, via Rosetta 2.
+
+  If you're not sure, use the -legacy one: it runs on every Mac from 10.13.
 
 
 FREQUENTLY ASKED QUESTIONS
